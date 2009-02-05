@@ -7,7 +7,7 @@
 
 Name:           blcr-kmod
 Version:        0.8.0
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -27,8 +27,9 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 ExclusiveArch:  i586 i686 x86_64 ppc ppc64
 
 # get the needed BuildRequires (in parts depending on what we build for)
-#BuildRequires:  %{_bindir}/kmodtool autoconf automake libtool
-BuildRequires:  %{_bindir}/kmodtool
+# CHANGE THIS when patch1 is removed
+BuildRequires:  %{_bindir}/kmodtool autoconf automake libtool
+#BuildRequires:  %{_bindir}/kmodtool
 %{!?kernels:BuildRequires: buildsys-build-rpmfusion-kerneldevpkgs-%{?buildforkernels:%{buildforkernels}}%{!?buildforkernels:current}-%{_target_cpu} }
 # kmodtool does its magic here
 %{expand:%(kmodtool --target %{_target_cpu} --repo rpmfusion --kmodname %{name} %{?buildforkernels:--%{buildforkernels}} %{?kernels:--for-kernels "%{?kernels}"} 2>/dev/null) }
@@ -49,6 +50,8 @@ kmodtool  --target %{_target_cpu}  --repo rpmfusion --kmodname %{name} %{?buildf
 # apply patches and do other stuff here
 pushd %{distname}
 %patch1 -p0
+# patch changed configure.ac
+autoreconf --force --install
 popd
 
 for kernel_version  in %{?kernel_versions} ; do
@@ -80,6 +83,9 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Thu Feb  5 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.0-4
+- Need to run autoreconf
+
 * Thu Feb  5 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.0-3
 - Add patch for 2.6.29
 
