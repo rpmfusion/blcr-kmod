@@ -1,0 +1,280 @@
+Index: configure.ac
+===================================================================
+RCS file: /var/local/cvs/lbnl_cr/configure.ac,v
+retrieving revision 1.411
+diff -u -r1.411 configure.ac
+--- configure.ac	12 Jan 2009 22:21:38 -0000	1.411
++++ configure.ac	5 Feb 2009 01:51:45 -0000
+@@ -1167,6 +1167,9 @@
+   CR_BAD_KERNEL([unable to determine location of rlim structure])
+ fi
+ 
++CR_CHECK_KERNEL_MEMBER([task.cred],[#include <linux/sched.h>],
++  [struct task_struct],[const struct cred *],[cred])
++
+ CR_CHECK_KERNEL_MEMBER([task.group_info],[#include <linux/sched.h>],
+   [struct task_struct],[struct group_info *],[group_info])
+ CR_CHECK_KERNEL_SYMBOL([suid_dumpable],[#include <linux/binfmts.h>])
+Index: cr_module/cr_chkpt_req.c
+===================================================================
+RCS file: /var/local/cvs/lbnl_cr/cr_module/cr_chkpt_req.c,v
+retrieving revision 1.264
+diff -u -r1.264 cr_chkpt_req.c
+--- cr_module/cr_chkpt_req.c	5 Dec 2008 23:15:19 -0000	1.264
++++ cr_module/cr_chkpt_req.c	5 Feb 2009 01:51:45 -0000
+@@ -395,13 +395,15 @@
+ //
+ static int bad_perms(struct task_struct *task)
+ {
++	cr_cred_t cred = cr_current_cred(), tcred;
+ 	int result = 0;
+ 
+ 	// We are always supposed to check capable/suser last.
+ 	task_lock(task);
++	tcred = cr_task_cred(task);
+ 	if ((!cr_is_dumpable(task) ||
+-	     ((current->euid != task->suid) && (current->euid != task->uid) &&
+-	      (current->uid  != task->suid) && (current->uid  != task->uid)))
++	     ((cred->euid != tcred->suid) && (cred->euid != tcred->uid) &&
++	      (cred->uid  != tcred->suid) && (cred->uid  != tcred->uid)))
+ 	    && !cr_capable(CAP_KILL)) {
+ 		result = -EPERM;
+ 	}
+Index: cr_module/cr_creds.c
+===================================================================
+RCS file: /var/local/cvs/lbnl_cr/cr_module/cr_creds.c,v
+retrieving revision 1.384
+diff -u -r1.384 cr_creds.c
+--- cr_module/cr_creds.c	3 Sep 2008 06:35:38 -0000	1.384
++++ cr_module/cr_creds.c	5 Feb 2009 01:51:45 -0000
+@@ -30,17 +30,28 @@
+     uid_t uid,euid,suid;
+     gid_t gid,egid,sgid;
+     unsigned int ngroups;
+-#if HAVE_TASK_GROUP_INFO
+-    struct group_info *group_info;
++#if HAVE_TASK_GROUP_INFO || HAVE_TASK_CRED
++    const struct group_info *group_info;
++  #define CR_HAVE_GROUP_INFO 1
+ #endif
+     /* We write the ngroups gids as an array after this struct */
+ };
+ 
+-#if HAVE_TASK_GROUP_INFO
++#if HAVE_TASK_CRED
++  typedef const struct group_info *cr_group_info_t;
++  #define cr_current_groups()	((current_cred())->group_info)
+   #define CR_NGROUPS_MAX	NGROUPS_MAX
+-  #define CR_NGROUPS(task)	((task)->group_info->ngroups)
+-  #define CR_GROUP_AT(task,idx)	GROUP_AT((task)->group_info, (idx))
++  #define CR_NGROUPS(gi)	((gi)->ngroups)
++  #define CR_GROUP_AT(gi,idx)	GROUP_AT((gi), (idx))
++#elif HAVE_TASK_GROUP_INFO
++  typedef const struct group_info *cr_group_info_t;
++  #define cr_current_groups()	(current->group_info)
++  #define CR_NGROUPS_MAX	NGROUPS_MAX
++  #define CR_NGROUPS(gi)	((gi)->ngroups)
++  #define CR_GROUP_AT(gi,idx)	GROUP_AT((gi), (idx))
+ #else
++  typedef const struct task_struct *cr_group_info_t;
++  #define cr_current_groups()	(current)
+   #define CR_NGROUPS_MAX	NGROUPS
+   #define CR_NGROUPS(task)	((task)->ngroups)
+   #define CR_GROUP_AT(task,idx)	((task)->groups[(idx)])
+@@ -82,6 +93,9 @@
+ 
+ #if CR_RESTORE_IDS
+     if (cf_creds.ngroups) {
++      #if CR_HAVE_GROUP_INFO || defined(CR_KCODE_groups_search) || !defined(CR_KCODE_supplemental_group_member)
++	cr_group_info_t gi = cr_current_groups();
++      #endif
+ 	int i;
+ 	/* Search for any required "expansion" of the group set */
+ 	for (i = 0; i < cf_creds.ngroups; ++i) {
+@@ -89,15 +103,15 @@
+ 	    int gid_ok = 0; /* Assume no match for this gid */
+ 
+     #if defined(CR_KCODE_groups_search)
+-	    gid_ok = groups_search(current->group_info, g);
++	    gid_ok = groups_search(gi, g);
+     #elif defined(CR_KCODE_supplemental_group_member)
+ 	    gid_ok = supplemental_group_member(g);
+     #else
+ 	    /* Just in case groups_search() or supplemental_group_member()
+ 	     * is not found (each was static in some kernels) */
+ 	    int j;
+-	    for (j = 0; j < current->ngroups; ++j) {
+-                if (g == CR_GROUP_AT(current, j)) {
++	    for (j = 0; j < gi->ngroups; ++j) {
++                if (g == CR_GROUP_AT(gi, j)) {
+ 		    gid_ok = 1; /* OK, g is in the existing set */
+ 		    break;
+ 		}
+@@ -122,28 +136,20 @@
+ 		break; /* no need to continue the i loop */
+ 	    }
+ 	}
+-  #if HAVE_TASK_GROUP_INFO
+-	(void)cr_insert_object(proc_req->req->map, cf_creds.group_info, current->group_info, GFP_KERNEL);
++  #if CR_HAVE_GROUP_INFO
++	(void)cr_insert_object(proc_req->req->map, (void *)cf_creds.group_info, (void *)gi, GFP_KERNEL);
+   #endif
+     }
+-  #if HAVE_TASK_GROUP_INFO
++  #if CR_HAVE_GROUP_INFO
+     else {
+ 	// NOTE: requires restore order match save order
+ 	struct group_info *found_group_info = NULL;
+ 
+-	if (!cr_find_object(proc_req->req->map, cf_creds.group_info, (void **)&found_group_info)) {
++	if (!cr_find_object(proc_req->req->map, (void *)cf_creds.group_info, (void **)&found_group_info)) {
+ 	   // Nothing to do
+-	} else if (found_group_info != current->group_info) {
+-	    // Like set_current_groups(), but validation and sort were done previously
+-	    struct group_info *prev_info;
+-	    get_group_info(found_group_info); // XXX: how to know it didn't disappear on us?
+-
+-	    task_lock(current);
+-	    prev_info = current->group_info;
+-	    current->group_info = found_group_info;
+-	    task_unlock(current);
+-
+-	    put_group_info(prev_info);
++	} else if (found_group_info != cr_current_groups()) {
++	    // validation and sort were done previously, but are not worth avoiding
++	    set_current_groups(found_group_info);
+ 	    CR_KTRACE_LOW_LVL("Reuse cached group_info %p", found_group_info);
+ 	} else {
+ 	    CR_KTRACE_LOW_LVL("Cached group_info == current");
+@@ -152,6 +158,8 @@
+   #endif
+ 
+     {
++	cr_cred_t my_cred = cr_current_cred();
++
+ 	/* The set_setresgid() call checks permissions for us, always OK if no change . */
+ 	retval = sys_setresgid(cf_creds.gid, cf_creds.egid, cf_creds.sgid);
+ 	if (retval < 0) {
+@@ -181,7 +189,7 @@
+          *
+          * Set the dumpable flag for the process, taken from 2.6.22 fs/exec.c
+          */
+-        if (current->euid == current->uid && current->egid == current->gid) {
++        if (my_cred->euid == my_cred->uid && my_cred->egid == my_cred->gid) {
+             cr_set_dumpable(current->mm, 1);
+         } else {
+             cr_set_dumpable(current->mm, cr_suid_dumpable);
+@@ -203,22 +211,25 @@
+     size_t sizeof_groups;
+     int bytes = 0;
+     int result;
++    cr_cred_t my_cred = cr_current_cred();
++    cr_group_info_t gi;
+ 
+-    cf_creds.uid   = current->uid;
+-    cf_creds.euid  = current->euid;
+-    cf_creds.suid  = current->suid;
+-    cf_creds.gid   = current->gid;
+-    cf_creds.egid  = current->egid;
+-    cf_creds.sgid  = current->sgid;
++    cf_creds.uid   = my_cred->uid;
++    cf_creds.euid  = my_cred->euid;
++    cf_creds.suid  = my_cred->suid;
++    cf_creds.gid   = my_cred->gid;
++    cf_creds.egid  = my_cred->egid;
++    cf_creds.sgid  = my_cred->sgid;
+ 
+     /* save the number of groups, so we know how many to read later */
+-    cf_creds.ngroups = CR_NGROUPS(current);
+-#if HAVE_TASK_GROUP_INFO
+-    cf_creds.group_info = current->group_info;
++    gi = cr_current_groups();
++    cf_creds.ngroups = CR_NGROUPS(gi);
++#if CR_HAVE_GROUP_INFO
++    cf_creds.group_info = gi;
+     /* We save the entire array only on the first occurance.
+      * NOTE: we currently rely on the restore order matching the save order.
+      */
+-    if (cr_insert_object(proc_req->req->map, cf_creds.group_info, cf_creds.group_info, GFP_KERNEL)) {
++    if (cr_insert_object(proc_req->req->map, (void *)gi, (void *)gi, GFP_KERNEL)) {
+ 	/* Ensure we don't save it again, and signal to restart time as well */
+ 	cf_creds.ngroups = 0;
+     }
+@@ -234,7 +245,7 @@
+     }
+     bytes += result;
+ 
+-#if HAVE_TASK_GROUP_INFO
++#if CR_HAVE_GROUP_INFO
+     if (sizeof_groups != 0) {
+ 	/* copy current->groups into an array and write it out */
+ 	int i;
+@@ -247,7 +258,7 @@
+ 	}
+ 
+ 	for (i=0; i<cf_creds.ngroups; ++i) {
+-	    groups[i] = CR_GROUP_AT(current, i);
++	    groups[i] = CR_GROUP_AT(gi, i);
+ 	}
+ 
+ 	result = cr_kwrite(eb, proc_req->file, groups, sizeof_groups);
+Index: cr_module/cr_io.c
+===================================================================
+RCS file: /var/local/cvs/lbnl_cr/cr_module/cr_io.c,v
+retrieving revision 1.77
+diff -u -r1.77 cr_io.c
+--- cr_module/cr_io.c	17 Dec 2008 03:29:08 -0000	1.77
++++ cr_module/cr_io.c	5 Feb 2009 01:51:45 -0000
+@@ -901,7 +901,11 @@
+ 
+     err = cr_permission(dentry->d_inode, acc_mask, NULL);
+     filp = ERR_PTR(err);
++  #if HAVE_TASK_CRED
++    if (!IS_ERR(filp)) filp = dentry_open(dentry, mnt, flags, cr_current_cred());
++  #else
+     if (!IS_ERR(filp)) filp = dentry_open(dentry, mnt, flags);
++  #endif
+ 
+     return filp;
+ }
+Index: cr_module/cr_kcompat.h
+===================================================================
+RCS file: /var/local/cvs/lbnl_cr/cr_module/cr_kcompat.h,v
+retrieving revision 1.247
+diff -u -r1.247 cr_kcompat.h
+--- cr_module/cr_kcompat.h	30 Nov 2008 06:32:00 -0000	1.247
++++ cr_module/cr_kcompat.h	5 Feb 2009 01:51:45 -0000
+@@ -546,4 +546,14 @@
+   static __inline__ int valid_signal(unsigned long sig) { return !!(sig <= _NSIG); }
+ #endif
+ 
++#if HAVE_TASK_CRED
++  typedef const struct cred *cr_cred_t;
++  #define cr_current_cred()	current_cred()
++  #define cr_task_cred(_t)	__task_cred(_t)
++#else
++  typedef const struct task_struct  *cr_cred_t;
++  #define cr_current_cred()	current
++  #define cr_task_cred(_t)	(_t)
++#endif
++
+ #endif /* _CR_KCOMPAT_H */
+Index: cr_module/cr_pipes.c
+===================================================================
+RCS file: /var/local/cvs/lbnl_cr/cr_module/cr_pipes.c,v
+retrieving revision 1.225
+diff -u -r1.225 cr_pipes.c
+--- cr_module/cr_pipes.c	21 Aug 2008 05:22:49 -0000	1.225
++++ cr_module/cr_pipes.c	5 Feb 2009 01:51:45 -0000
+@@ -82,7 +82,11 @@
+      * know this "extra" RDWR open will work regardless of true access rights.
+      * THIS IS ALSO WHY WE MUST CLOSE rw_filp WHEN DONE WITH IT.
+      */
++  #if HAVE_TASK_CRED
++    rw_filp = dentry_open(dget(dentry), mntget(mnt), O_RDWR, cr_current_cred());
++  #else
+     rw_filp = dentry_open(dget(dentry), mntget(mnt), O_RDWR);
++  #endif
+     retval = PTR_ERR(rw_filp);
+     if (IS_ERR(rw_filp)) goto out;
+ 	

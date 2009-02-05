@@ -7,7 +7,7 @@
 
 Name:           blcr-kmod
 Version:        0.8.0
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -19,6 +19,7 @@ Source0:        http://ftg.lbl.gov/CheckpointRestart/downloads/%{distname}.tar.g
 # Patch0 is to remove -fno-stack-protector (provided by upstream)
 # Patch0 requires running autoreconf
 #Patch0:		blcr-stackcheck.patch
+Patch1:		linux_2.6.29-rc3.patch00
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 #Generic i386 is NOT supported
@@ -46,11 +47,9 @@ kmodtool  --target %{_target_cpu}  --repo rpmfusion --kmodname %{name} %{?buildf
 
 %setup -q -c -T -a 0 -n %{distname}
 # apply patches and do other stuff here
-#pushd %{real_distname}
-#%patch0 -p0
-#patch0 modified configure.ac, Makefile.am
-#autoreconf --force --install
-#popd
+pushd %{distname}
+%patch1 -p0
+popd
 
 for kernel_version  in %{?kernel_versions} ; do
     cp -a %{distname} _kmod_build_${kernel_version%%___*}
@@ -81,6 +80,9 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Thu Feb  5 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.0-3
+- Add patch for 2.6.29
+
 * Sun Jan 25 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.0-2
 - Put back EA i686
 - Copy 1st 6 lines from http://cvs.rpmfusion.org/viewvc/rpms/madwifi-kmod/devel/madwifi-kmod.spec?root=nonfree&view=markup
