@@ -7,7 +7,7 @@
 
 Name:           blcr-kmod
 Version:        0.8.0
-Release:        2%{?dist}
+Release:        2%{?dist}.1
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -81,6 +81,9 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Fri Feb 13 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.0-2.1
+- rebuild for latest Fedora kernel;
+
 * Sun Jan 25 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.0-2
 - Put back EA i686
 - Copy 1st 6 lines from http://cvs.rpmfusion.org/viewvc/rpms/madwifi-kmod/devel/madwifi-kmod.spec?root=nonfree&view=markup
