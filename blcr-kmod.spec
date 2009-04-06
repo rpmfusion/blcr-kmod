@@ -6,8 +6,8 @@
 #define buildforkernels newest
 
 Name:           blcr-kmod
-Version:        0.8.0
-Release:        5%{?dist}.2
+Version:        0.8.1
+Release:        1%{?dist}
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -19,7 +19,7 @@ Source0:        http://ftg.lbl.gov/CheckpointRestart/downloads/%{distname}.tar.g
 # Patch0 is to remove -fno-stack-protector (provided by upstream)
 # Patch0 requires running autoreconf
 #Patch0:		blcr-stackcheck.patch
-Patch1:		linux_2.6.29-rc3.patch00
+#Patch1:		linux_2.6.29-rc3.patch00
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 #Generic i386 is NOT supported
@@ -28,8 +28,8 @@ ExclusiveArch:  i586 i686 x86_64 ppc ppc64
 
 # get the needed BuildRequires (in parts depending on what we build for)
 # CHANGE THIS when patch1 is removed
-BuildRequires:  %{_bindir}/kmodtool autoconf automake libtool
-#BuildRequires:  %{_bindir}/kmodtool
+#BuildRequires:  %{_bindir}/kmodtool autoconf automake libtool
+BuildRequires:  %{_bindir}/kmodtool
 %{!?kernels:BuildRequires: buildsys-build-rpmfusion-kerneldevpkgs-%{?buildforkernels:%{buildforkernels}}%{!?buildforkernels:current}-%{_target_cpu} }
 # kmodtool does its magic here
 %{expand:%(kmodtool --target %{_target_cpu} --repo rpmfusion --kmodname %{name} %{?buildforkernels:--%{buildforkernels}} %{?kernels:--for-kernels "%{?kernels}"} 2>/dev/null) }
@@ -48,11 +48,11 @@ kmodtool  --target %{_target_cpu}  --repo rpmfusion --kmodname %{name} %{?buildf
 
 %setup -q -c -T -a 0 -n %{distname}
 # apply patches and do other stuff here
-pushd %{distname}
-%patch1 -p0
+#pushd %{distname}
+#%patch1 -p0
 # patch changed configure.ac
-autoreconf --force --install
-popd
+#autoreconf --force --install
+#popd
 
 for kernel_version  in %{?kernel_versions} ; do
     cp -a %{distname} _kmod_build_${kernel_version%%___*}
@@ -83,6 +83,9 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Mon Apr  6 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.1-1
+- Update to 0.8.1
+
 * Sun Apr 05 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.0-5.2
 - rebuild for new kernels
 
