@@ -3,11 +3,11 @@
 # "buildforkernels newest" macro for just that build; immediately after
 # queuing that build enable the macro again for subsequent builds; that way
 # a new akmod package will only get build when a new one is actually needed
-%define buildforkernels newest
+#define buildforkernels newest
 
 Name:           blcr-kmod
-Version:        0.8.0
-Release:        2%{?dist}.3
+Version:        0.8.1
+Release:        1%{?dist}
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -19,6 +19,7 @@ Source0:        http://ftg.lbl.gov/CheckpointRestart/downloads/%{distname}.tar.g
 # Patch0 is to remove -fno-stack-protector (provided by upstream)
 # Patch0 requires running autoreconf
 #Patch0:		blcr-stackcheck.patch
+#Patch1:		linux_2.6.29-rc3.patch00
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 #Generic i386 is NOT supported
@@ -26,6 +27,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 ExclusiveArch:  i586 i686 x86_64 ppc ppc64
 
 # get the needed BuildRequires (in parts depending on what we build for)
+# CHANGE THIS when patch1 is removed
 #BuildRequires:  %{_bindir}/kmodtool autoconf automake libtool
 BuildRequires:  %{_bindir}/kmodtool
 %{!?kernels:BuildRequires: buildsys-build-rpmfusion-kerneldevpkgs-%{?buildforkernels:%{buildforkernels}}%{!?buildforkernels:current}-%{_target_cpu} }
@@ -46,9 +48,9 @@ kmodtool  --target %{_target_cpu}  --repo rpmfusion --kmodname %{name} %{?buildf
 
 %setup -q -c -T -a 0 -n %{distname}
 # apply patches and do other stuff here
-#pushd %{real_distname}
-#%patch0 -p0
-#patch0 modified configure.ac, Makefile.am
+#pushd %{distname}
+#%patch1 -p0
+# patch changed configure.ac
 #autoreconf --force --install
 #popd
 
@@ -81,14 +83,23 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
-* Wed Mar 25 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.0-2.3
+* Mon Apr  6 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.1-1
+- Update to 0.8.1
+
+* Sun Apr 05 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.0-5.2
 - rebuild for new kernels
 
-* Thu Feb 26 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.0-2.2
+* Sun Mar 29 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.0-5.1
+- rebuild for new F11 features
+
+* Sun Feb 15 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.0-4.1
 - rebuild for latest Fedora kernel;
 
-* Fri Feb 13 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.0-2.1
-- rebuild for latest Fedora kernel;
+* Thu Feb  5 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.0-4
+- Need to run autoreconf
+
+* Thu Feb  5 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.0-3
+- Add patch for 2.6.29
 
 * Sun Jan 25 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.0-2
 - Put back EA i686
