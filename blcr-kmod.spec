@@ -3,11 +3,11 @@
 # "buildforkernels newest" macro for just that build; immediately after
 # queuing that build enable the macro again for subsequent builds; that way
 # a new akmod package will only get build when a new one is actually needed
-#define buildforkernels newest
+%define buildforkernels newest
 
 Name:           blcr-kmod
 Version:        0.8.1
-Release:        1%{?dist}
+Release:        1%{?dist}.1
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -83,6 +83,9 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Sun Apr 26 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.1-1.1
+- rebuild for new kernels
+
 * Mon Apr  6 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.1-1
 - Update to 0.8.1
 
