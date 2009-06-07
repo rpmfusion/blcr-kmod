@@ -7,7 +7,7 @@
 
 Name:           blcr-kmod
 Version:        0.8.1
-Release:        1%{?dist}.7
+Release:        2%{?dist}.7
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -16,10 +16,8 @@ Group:          System Environment/Base
 License:        GPLv2+
 URL:            http://www.blcr.org/
 Source0:        http://ftg.lbl.gov/CheckpointRestart/downloads/%{distname}.tar.gz
-# Patch0 is to remove -fno-stack-protector (provided by upstream)
-# Patch0 requires running autoreconf
-#Patch0:		blcr-stackcheck.patch
-#Patch1:		linux_2.6.29-rc3.patch00
+# Patch to build on 2.6.29.x
+Patch0:		put_fs_struct.patch00
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 #Generic i386 is NOT supported
@@ -48,11 +46,11 @@ kmodtool  --target %{_target_cpu}  --repo rpmfusion --kmodname %{name} %{?buildf
 
 %setup -q -c -T -a 0 -n %{distname}
 # apply patches and do other stuff here
-#pushd %{distname}
-#%patch1 -p0
+pushd %{distname}
+%patch0 -p0
 # patch changed configure.ac
 #autoreconf --force --install
-#popd
+popd
 
 for kernel_version  in %{?kernel_versions} ; do
     cp -a %{distname} _kmod_build_${kernel_version%%___*}
