@@ -7,7 +7,7 @@
 
 Name:           blcr-kmod
 Version:        0.8.1
-Release:        2%{?dist}.7
+Release:        3%{?dist}.7
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -17,7 +17,7 @@ License:        GPLv2+
 URL:            http://www.blcr.org/
 Source0:        http://ftg.lbl.gov/CheckpointRestart/downloads/%{distname}.tar.gz
 # Patch to build on 2.6.29.x
-Patch0:		put_fs_struct.patch00
+Patch0:		put_fs_struct.patch01
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 #Generic i386 is NOT supported
