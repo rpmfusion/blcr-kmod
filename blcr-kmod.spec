@@ -1,4 +1,4 @@
-# buildforkernels macro hint: when you build a new version or a new release
+c# buildforkernels macro hint: when you build a new version or a new release
 # that contains bugfixes or other improvements then you must disable the
 # "buildforkernels newest" macro for just that build; immediately after
 # queuing that build enable the macro again for subsequent builds; that way
@@ -7,7 +7,7 @@
 
 Name:           blcr-kmod
 Version:        0.8.1
-Release:        3%{?dist}.9
+Release:        3%{?dist}.10
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -18,6 +18,8 @@ URL:            http://www.blcr.org/
 Source0:        http://ftg.lbl.gov/CheckpointRestart/downloads/%{distname}.tar.gz
 # Patch to build on 2.6.29.x
 Patch0:		put_fs_struct.patch01
+# Patch to configure because new System.map does not have _end
+Patch1:         configure.patch00
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 #Generic i386 is NOT supported
