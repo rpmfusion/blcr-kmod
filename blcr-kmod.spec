@@ -1,4 +1,4 @@
-c# buildforkernels macro hint: when you build a new version or a new release
+# buildforkernels macro hint: when you build a new version or a new release
 # that contains bugfixes or other improvements then you must disable the
 # "buildforkernels newest" macro for just that build; immediately after
 # queuing that build enable the macro again for subsequent builds; that way
@@ -7,7 +7,7 @@ c# buildforkernels macro hint: when you build a new version or a new release
 
 Name:           blcr-kmod
 Version:        0.8.1
-Release:        3%{?dist}.10
+Release:        3%{?dist}.11
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -83,6 +83,9 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Fri Nov 06 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.1-3.11
+- rebuild for new kernels
+
 * Wed Oct 21 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.1-3.9
 - rebuild for new kernels
 
