@@ -7,7 +7,7 @@
 
 Name:           blcr-kmod
 Version:        0.8.1
-Release:        3%{?dist}.11
+Release:        3%{?dist}.12
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -20,6 +20,9 @@ Source0:        http://ftg.lbl.gov/CheckpointRestart/downloads/%{distname}.tar.g
 Patch0:		put_fs_struct.patch01
 # Patch to configure because new System.map does not have _end
 Patch1:         configure.patch00
+# Try patch for 2.6.31.5 for find_task_by_pid_type_ns 
+Patch2:	    	find_task_by_pid.patch
+
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 #Generic i386 is NOT supported
@@ -28,7 +31,7 @@ ExclusiveArch:  i586 i686 x86_64 ppc ppc64
 
 # get the needed BuildRequires (in parts depending on what we build for)
 # CHANGE THIS when patch1 is removed
-#BuildRequires:  %{_bindir}/kmodtool autoconf automake libtool
+BuildRequires:  %{_bindir}/kmodtool autoconf automake libtool
 BuildRequires:  %{_bindir}/kmodtool
 %{!?kernels:BuildRequires: buildsys-build-rpmfusion-kerneldevpkgs-%{?buildforkernels:%{buildforkernels}}%{!?buildforkernels:current}-%{_target_cpu} }
 # kmodtool does its magic here
@@ -50,8 +53,9 @@ kmodtool  --target %{_target_cpu}  --repo rpmfusion --kmodname %{name} %{?buildf
 # apply patches and do other stuff here
 pushd %{distname}
 %patch0 -p1
+%patch2 -p0
 # patch changed configure.ac
-#autoreconf --force --install
+autoreconf --force --install
 popd
 
 for kernel_version  in %{?kernel_versions} ; do
@@ -83,6 +87,9 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Fri Nov  6 2009 Neal Becker <ndbecker2@gmail.com> - 0.8.1-3.12
+- Try patch for 2.6.31.5
+
 * Fri Nov 06 2009 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.1-3.11
 - rebuild for new kernels
 
