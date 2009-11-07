@@ -1,0 +1,10 @@
+--- configure.ac        23 Aug 2009 22:58:26 -0000      1.410.2.10
++++ configure.ac        7 Nov 2009 00:15:14 -0000
+@@ -1225,6 +1225,7 @@ CR_CHECK_KERNEL_CALL([find_task_by_pid_n
+ if test -z "${HAVE_FIND_TASK_BY_PID}${HAVE_FIND_TASK_BY_PID_NS}"; then
+   CR_BAD_KERNEL([unable to determine how to map pid_nr -> struct task])
+ fi
++CR_FIND_KSYM([find_task_by_pid_ns],[CODE])
+ 
+ CR_CHECK_KERNEL_CALL([find_task_by_pid_type],[#include <linux/sched.h>])
+ CR_CHECK_KERNEL_CALL([find_task_by_pid_type_ns],[#include <linux/sched.h>])
