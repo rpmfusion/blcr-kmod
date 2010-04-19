@@ -7,7 +7,7 @@
 
 Name:           blcr-kmod
 Version:        0.8.1
-Release:        3%{?dist}.31
+Release:        3%{?dist}.32
 Summary:        Kernel module (kmod) for Berkeley Lab Checkpoint/Restart for Linux
 
 %define distname blcr-%{version}
@@ -83,6 +83,9 @@ done
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Mon Apr 19 2010 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.1-3.32
+- rebuild for new kernel
+
 * Sat Apr 17 2010 Thorsten Leemhuis <fedora [AT] leemhuis [DOT] info> - 0.8.1-3.31
 - rebuild for new kernel
 
